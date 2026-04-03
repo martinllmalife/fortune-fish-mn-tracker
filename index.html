@@ -730,7 +730,7 @@ select.f-sel{background:var(--white);border:1px solid var(--border2);color:var(-
 
           <div class="setup-card">
             <h2>Change Passcode</h2>
-            <p>Default is <strong>FF2026</strong>. Set a new one and share it with your team.</p>
+            <p>Default is <strong>GET2026</strong>. Set a new one and share it with your team.</p>
             <div class="field-row">
               <input class="field-input" type="password" id="newPass" placeholder="New passcode (min 4 chars)" maxlength="8" autocomplete="new-password">
               <button class="btn-connect" onclick="changePasscode()">Save</button>
@@ -897,7 +897,7 @@ const MAIN_REPS=['Aaron Witchger','Charlie Butwinick','Jeff Pierce','Jonathan Pa
 const DATES=["2026-03-16","2026-03-17","2026-03-18","2026-03-19","2026-03-20","2026-03-21","2026-03-22"];
 
 // ── LOCK ──
-function getPasscode(){return localStorage.getItem('cd_pass')||'FF2026';}
+function getPasscode(){return localStorage.getItem('cd_pass')||'GET2026';}
 function checkLock(){
   const v=document.getElementById('lockInput').value.trim().toUpperCase();
   if(v===getPasscode().toUpperCase()){
