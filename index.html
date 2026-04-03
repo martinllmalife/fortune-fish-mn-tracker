@@ -1170,7 +1170,7 @@ function initApp(){
   // Load saved AI key display
   if(getAIKey()){ const ki=document.getElementById('geminiKeyInput'); if(ki) ki.placeholder='Key saved ✓'; }
   try{ rebuildDSMSelector();renderHierarchySetup();renderDSMDash(); }catch(e){ console.warn('initApp DSM:',e); }
-  if(scriptUrl){setupSheetsUI();loadTargetsFromSheets();}
+  // google sheets removed
   renderUploadHistory();
   // Init target date input
   const savedTD = localStorage.getItem(dpKey('cd_target_date'));
@@ -1526,13 +1526,13 @@ function showTabById(id){
 }
 
 // ── SHEETS ──
-function setSyncState(s,l){const d=document.getElementById('syncDot'),lb=document.getElementById('syncLbl');d.className='sync-dot'+(s?' '+s:'');lb.textContent=l;}
-function setupSheetsUI(){document.getElementById('scriptUrl').value=scriptUrl;document.getElementById('scriptUrl').classList.add('saved');document.getElementById('btnDisconnect').style.display='block';updateConnSummary();setSyncState('ok','connected');}
-async function loadTargetsFromSheets(){if(!scriptUrl)return;setSyncState('syncing','loading…');try{const p=encodeURIComponent(document.getElementById('periodSelect').value);const res=await fetch(`${scriptUrl}?action=getTargets&period=${p}`);const j=await res.json();if(j.ok){targets={};(j.targets||[]).forEach(t=>{targets[t.id]={period:t.period,at:t.at};});setSyncState('ok','synced');updateAll();}else setSyncState('err','error');}catch(e){setSyncState('err','unreachable');}}
-async function saveTargetToSheets(id,active,name,rep){if(!scriptUrl)return;setSyncState('syncing','saving…');const a=D.accounts.find(x=>x.id===id)||{};try{const body={action:active?'addTarget':'removeTarget',id,customer:name||a.name,rep:rep||a.rep,location:a.city,status:a.status,period:document.getElementById('periodSelect').value,at:Date.now()};await fetch(scriptUrl,{method:'POST',body:JSON.stringify(body),headers:{'Content-Type':'text/plain'}});setSyncState('ok','saved');}catch(e){setSyncState('err','save failed');}}
-async function connectSheets(){const url=document.getElementById('scriptUrl').value.trim();if(!url){toast('Paste your URL first','err');return;}const st=document.getElementById('connStatus');st.style.display='block';st.className='conn-status';st.textContent='Testing…';try{const res=await fetch(`${url}?action=ping`);const j=await res.json();if(j.ok){scriptUrl=url;localStorage.setItem('cd_script_url',url);st.className='conn-status ok';st.textContent='Connected!';document.getElementById('scriptUrl').classList.add('saved');setSyncState('ok','connected');updateConnSummary();document.getElementById('btnDisconnect').style.display='block';toast('Sheets connected');if(D.accounts.length)loadTargetsFromSheets();}else throw new Error();}catch(e){st.className='conn-status err';st.textContent='Could not connect. Make sure access is set to "Anyone".';}}
-function disconnectSheets(){if(!confirm('Disconnect?'))return;scriptUrl='';localStorage.removeItem('cd_script_url');setSyncState('','not connected');updateConnSummary();document.getElementById('btnDisconnect').style.display='none';}
-function updateConnSummary(){document.getElementById('connSummary').textContent=scriptUrl?'Connected: '+scriptUrl.slice(0,50)+'…':'Not connected';}
+// (google sheets removed)
+// (google sheets removed)
+async function loadTargetsFromSheets(){return;// sheets removed - setSyncState('syncing','loading…');try{const p=encodeURIComponent(document.getElementById('periodSelect').value);const res=await fetch(`${scriptUrl}?action=getTargets&period=${p}`);const j=await res.json();if(j.ok){targets={};(j.targets||[]).forEach(t=>{targets[t.id]={period:t.period,at:t.at};});setSyncState('ok','synced');updateAll();}else setSyncState('err','error');}catch(e){setSyncState('err','unreachable');}}
+async function saveTargetToSheets(id,active,name,rep){return;// sheets removed - setSyncState('syncing','saving…');const a=D.accounts.find(x=>x.id===id)||{};try{const body={action:active?'addTarget':'removeTarget',id,customer:name||a.name,rep:rep||a.rep,location:a.city,status:a.status,period:document.getElementById('periodSelect').value,at:Date.now()};await fetch(scriptUrl,{method:'POST',body:JSON.stringify(body),headers:{'Content-Type':'text/plain'}});setSyncState('ok','saved');}catch(e){setSyncState('err','save failed');}}
+async function connectSheets(){return;// sheets removed - const url=document.getElementById('scriptUrl').value.trim();if(!url){toast('Paste your URL first','err');return;}const st=document.getElementById('connStatus');st.style.display='block';st.className='conn-status';st.textContent='Testing…';try{const res=await fetch(`${url}?action=ping`);const j=await res.json();if(j.ok){scriptUrl=url;localStorage.setItem('cd_script_url',url);st.className='conn-status ok';st.textContent='Connected!';document.getElementById('scriptUrl').classList.add('saved');setSyncState('ok','connected');updateConnSummary();document.getElementById('btnDisconnect').style.display='block';toast('Sheets connected');if(D.accounts.length)loadTargetsFromSheets();}else throw new Error();}catch(e){st.className='conn-status err';st.textContent='Could not connect. Make sure access is set to "Anyone".';}}
+function disconnectSheets(){return;// sheets removed - if(!confirm('Disconnect?'))return;scriptUrl='';localStorage.removeItem('cd_script_url');setSyncState('','not connected');updateConnSummary();document.getElementById('btnDisconnect').style.display='none';}
+// (google sheets removed)
 
 
 // ── HIERARCHY STATE ────────────────────────────────────────────────
