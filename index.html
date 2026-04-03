@@ -6,6 +6,7 @@
 <title>GET Cut+Dry — Growth Enablement Tracking</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -762,6 +763,19 @@ select.f-sel{background:var(--white);border:1px solid var(--border2);color:var(-
           </div>
 
           <div class="setup-card" style="margin-top:0">
+            <h2>Upload Orders Report <span style="font-size:11px;font-weight:600;background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:20px;margin-left:6px">Optional · Enables CPO%</span></h2>
+            <p>Upload the <strong>Customer Orders Report</strong> from Cut+Dry to calculate Customer Placed Order % (CPO) per rep. Go to <strong>Reports → Customer Orders</strong> and export as Excel or CSV.</p>
+            <div class="field-row" style="margin-bottom:14px">
+              <label class="btn-connect" style="cursor:pointer;background:var(--white);border:1.5px solid var(--border2);color:var(--text2);" for="ordersUploadInput">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Upload Orders (.xlsx or .csv)
+                <input type="file" id="ordersUploadInput" accept=".xlsx,.csv,.xls" style="display:none" onchange="handleOrdersUpload(event)">
+              </label>
+            </div>
+            <div id="ordersUploadStatus" style="font-size:12px;color:var(--text3);margin-top:4px"></div>
+          </div>
+
+          <div class="setup-card" style="margin-top:0">
             <h2>Manage Hierarchy</h2>
             <p>Assign sales reps to DSMs and territories. This creates the rollup view in the DSM tab. Use manual entry or upload a CSV.</p>
             <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
@@ -1139,6 +1153,120 @@ async function migrateLocalStorageToSupabase(){
   }
 }
 
+
+// ── Orders Report: CPO% calculation ─────────────────────────────────────
+// Determines if an order was placed by the rep or by the customer.
+// Matches Order Placed By against rep first names from Sales Rep(s) field.
+function isRepPlaced(placedBy, salesRepsStr){
+  const placed = (placedBy||'').toLowerCase().trim();
+  if(!placed) return false;
+  // Filter out territory/marketplace entries, keep only person names
+  const reps = (salesRepsStr||'').split(',')
+    .map(r=>r.trim().toLowerCase())
+    .filter(r=>r.length>0 && !r.includes('marketplace') && !r.includes('market place'));
+  return reps.some(repName=>{
+    const repFirst = repName.split(' ')[0];
+    if(repFirst.length < 3) return false; // skip single-letter or very short names
+    // Check if placed_by contains the rep's first name, or rep name contains placed_by's first name
+    const placedFirst = placed.split(' ')[0];
+    return placed.includes(repFirst) || (placedFirst.length >= 3 && repFirst.includes(placedFirst));
+  });
+}
+
+function computeCPOByRep(rows){
+  // rows: [{rep_str, placed_by, origin}]
+  const cpo = {};
+  rows.forEach(r=>{
+    // Parse individual rep names (skip marketplace entries)
+    const repNames = (r.rep_str||'').split(',')
+      .map(n=>n.trim())
+      .filter(n=>n.length>0 && !n.toLowerCase().includes('marketplace') && !n.toLowerCase().includes('market place'));
+    if(repNames.length===0) return;
+    // Assign order to the first real rep name
+    const rep = repNames[0];
+    if(!cpo[rep]) cpo[rep]={total:0,customer:0,rep_placed:0};
+    cpo[rep].total++;
+    if(isRepPlaced(r.placed_by, r.rep_str)){
+      cpo[rep].rep_placed++;
+    } else {
+      cpo[rep].customer++;
+    }
+  });
+  // Compute pct
+  Object.keys(cpo).forEach(rep=>{
+    const d=cpo[rep];
+    d.pct = d.total ? Math.round(d.customer/d.total*1000)/10 : 0;
+    d.rep = d.rep_placed; // alias for existing D.cpo shape
+  });
+  return cpo;
+}
+
+async function handleOrdersUpload(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const status = document.getElementById('ordersUploadStatus');
+  status.textContent = 'Parsing...';
+  try {
+    let rows = [];
+    if(file.name.endsWith('.csv')){
+      const text = await file.text();
+      const lines = text.replace(/^﻿/,'').trim().split('
+');
+      const header = parseCSVRow(lines[0]).map(h=>h.toLowerCase().trim().replace(/"/g,''));
+      const repIdx = header.indexOf('sales rep(s)');
+      const placedIdx = header.indexOf('order placed by');
+      if(repIdx<0||placedIdx<0){ status.style.color='var(--coral)'; status.textContent='Could not find required columns (Sales Rep(s), Order Placed By)'; return; }
+      for(let i=1;i<lines.length;i++){
+        const row=parseCSVRow(lines[i]);
+        if(row.length<2) continue;
+        rows.push({rep_str:row[repIdx]||'', placed_by:row[placedIdx]||''});
+      }
+    } else {
+      // XLSX via SheetJS
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws, {header:1});
+      const header = (data[0]||[]).map(h=>String(h||'').toLowerCase().trim());
+      const repIdx = header.indexOf('sales rep(s)');
+      const placedIdx = header.indexOf('order placed by');
+      if(repIdx<0||placedIdx<0){ status.style.color='var(--coral)'; status.textContent='Could not find required columns (Sales Rep(s), Order Placed By)'; return; }
+      for(let i=1;i<data.length;i++){
+        const row=data[i];
+        if(!row||row.length<2) continue;
+        rows.push({rep_str:String(row[repIdx]||''), placed_by:String(row[placedIdx]||'')});
+      }
+    }
+    if(rows.length===0){ status.style.color='var(--coral)'; status.textContent='No data rows found'; return; }
+    const cpoByRep = computeCPOByRep(rows);
+    const repCount = Object.keys(cpoByRep).length;
+    // Save to latest snapshot metrics
+    await saveOrdersCPOToSnapshot(cpoByRep);
+    // Update D.cpo live
+    D.cpo = cpoByRep;
+    updateAll();
+    status.style.color='var(--green-dark)';
+    status.textContent = `✓ ${rows.length} orders parsed · CPO% calculated for ${repCount} reps`;
+    toast('CPO data loaded!','ok');
+  } catch(err){
+    status.style.color='var(--coral)';
+    status.textContent = 'Error: '+err.message;
+    console.error(err);
+  }
+  event.target.value='';
+}
+
+async function saveOrdersCPOToSnapshot(cpoByRep){
+  if(!activeDPId || uploadHistory.length===0) return;
+  const latest = uploadHistory[uploadHistory.length-1];
+  const updatedMetrics = Object.assign({}, latest.metrics||{}, {cpo_by_rep: cpoByRep});
+  await sb.from('weekly_snapshots')
+    .update({metrics: updatedMetrics})
+    .eq('id', latest.id);
+  // Update local cache
+  latest.metrics = updatedMetrics;
+}
+
 // Proper CSV parser — handles quoted fields containing commas
 function parseCSVRow(line){
   const result=[];let cur='',inQ=false;
@@ -1307,15 +1435,20 @@ function computeD(){
     };
   });
   D.rep_summary=rs;
-  // Build D.cpo from CPO_ORDERS
-  const cpo={};
-  MAIN_REPS.forEach(rep=>{
-    const orders=CPO_ORDERS[rep]||[];
-    const customer=orders.filter(o=>o.is_cpo).length;
-    const rp=orders.length-customer;
-    cpo[rep]={total:orders.length,customer,rep:rp,pct:orders.length?Math.round(customer/orders.length*1000)/10:0};
-  });
-  D.cpo=cpo;
+  // Build D.cpo from uploaded orders data if available, else fall back to hardcoded CPO_ORDERS
+  const latestMetrics = uploadHistory.length>0 ? uploadHistory[uploadHistory.length-1].metrics : null;
+  if(latestMetrics?.cpo_by_rep && Object.keys(latestMetrics.cpo_by_rep).length>0){
+    D.cpo = latestMetrics.cpo_by_rep;
+  } else {
+    const cpo={};
+    MAIN_REPS.forEach(rep=>{
+      const orders=CPO_ORDERS[rep]||[];
+      const customer=orders.filter(o=>o.is_cpo).length;
+      const rp=orders.length-customer;
+      cpo[rep]={total:orders.length,customer,rep:rp,pct:orders.length?Math.round(customer/orders.length*1000)/10:0};
+    });
+    D.cpo=cpo;
+  }
   // Build D.spark from CPO_ORDERS (order counts per date)
   const spark={};
   MAIN_REPS.forEach(rep=>{
