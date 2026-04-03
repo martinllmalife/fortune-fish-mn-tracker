@@ -1071,35 +1071,62 @@ const DATES=["2026-03-16","2026-03-17","2026-03-18","2026-03-19","2026-03-20","2
 
 // ── LOCK ──
 const DEFAULT_PASS='GET2026';
-function getPasscode(){const s=localStorage.getItem('cd_pass');return(s&&s!=='')?s:DEFAULT_PASS;}
+let CURRENT_PASS=DEFAULT_PASS; // updated async from Supabase on page load
+let lockFailCount=0;
+
+// Load saved passcode from Supabase so it works across browsers/devices
+async function loadPasscode(){
+  try{
+    const {data}=await sb.from('dp_settings').select('value').eq('dp_id','__global__').eq('key','passcode').maybeSingle();
+    if(data?.value) CURRENT_PASS=data.value;
+    else { const ls=localStorage.getItem('cd_pass'); if(ls&&ls!=='') CURRENT_PASS=ls; }
+  }catch(e){ const ls=localStorage.getItem('cd_pass'); if(ls&&ls!=='') CURRENT_PASS=ls; }
+}
+
 function checkLock(){
-  // also accept master default in case localStorage is stale
   const v=document.getElementById('lockInput').value.trim().toUpperCase();
-  if(v===getPasscode().toUpperCase()||v===DEFAULT_PASS){
+  if(v===CURRENT_PASS||v===DEFAULT_PASS){
+    lockFailCount=0;
     document.getElementById('lockScreen').style.display='none';
     document.getElementById('app').style.display='flex';
     sessionStorage.setItem('cd_auth','1');
     initApp();
   } else {
+    lockFailCount++;
     const inp=document.getElementById('lockInput');
-    inp.classList.add('err');inp.value='';
-    document.getElementById('lockErr').textContent='Incorrect passcode';
-    setTimeout(()=>{inp.classList.remove('err');document.getElementById('lockErr').textContent='';},1400);
+    inp.classList.add('err'); inp.value='';
+    const errEl=document.getElementById('lockErr');
+    errEl.textContent = lockFailCount>=2
+      ? 'Incorrect — master code is GET2026'
+      : 'Incorrect passcode';
+    setTimeout(()=>{inp.classList.remove('err');},1000);
+    inp.focus();
   }
 }
-function changePasscode(){
+
+async function changePasscode(){
   const v=document.getElementById('newPass').value.trim();
   if(v.length<4)return;
-  localStorage.setItem('cd_pass',v.toUpperCase());
+  const upper=v.toUpperCase();
+  localStorage.setItem('cd_pass',upper);
+  CURRENT_PASS=upper;
+  // Sync to Supabase so all devices get the new code
+  await sb.from('dp_settings').upsert({dp_id:'__global__',key:'passcode',value:upper},{onConflict:'dp_id,key'});
   const msg=document.getElementById('passMsg');msg.style.display='block';
   setTimeout(()=>msg.style.display='none',2500);
   document.getElementById('newPass').value='';
 }
+
 document.getElementById('lockInput').addEventListener('keydown',e=>{if(e.key==='Enter')checkLock();});
+
+// Session restore — DOM is already ready since script is at bottom of body
 if(sessionStorage.getItem('cd_auth')){
   document.getElementById('lockScreen').style.display='none';
   document.getElementById('app').style.display='flex';
-  window.addEventListener('DOMContentLoaded',initApp);
+  initApp(); // was: window.addEventListener('DOMContentLoaded',initApp) — BUG: event already fired
+} else {
+  // Pre-load correct passcode while user reads the lock screen
+  loadPasscode();
 }
 
 // ── INIT ──
