@@ -1178,7 +1178,42 @@ function initApp(){
 }
 function getFA(){const r=document.getElementById('repSelect').value;return r==='All'?D.accounts:D.accounts.filter(a=>a.rep===r);}
 function rebuildRepSelect(){const s=document.getElementById('repSelect');s.innerHTML=['All',...MAIN_REPS].map(r=>`<option value="${r}">${r==='All'?'All Reps':r}</option>`).join('');}
-function updateAll(){renderKPIs();renderDashboard();renderLeaderboard();renderRepCards();renderReportCard();renderAccounts();renderTargets();updateBadge();}
+function computeD(){
+  // Build D.rep_summary from D.accounts
+  const rs={};
+  MAIN_REPS.forEach(rep=>{
+    const accts=D.accounts.filter(a=>a.rep===rep&&a.eligible==='Yes');
+    const counts={'Not Invited':0,'Invited':0,'Signed Up':0,'Ordering':0};
+    accts.forEach(a=>{const st=a.status||'Not Invited';if(counts[st]!==undefined)counts[st]++;else counts['Not Invited']++;});
+    const total=accts.length;
+    rs[rep]={
+      total,
+      counts,
+      eligible_ni:counts['Not Invited'],
+      ordering_pct:total?Math.round(counts['Ordering']/total*1000)/10:0,
+      engaged_pct:total?Math.round((counts['Signed Up']+counts['Ordering'])/total*1000)/10:0
+    };
+  });
+  D.rep_summary=rs;
+  // Build D.cpo from CPO_ORDERS
+  const cpo={};
+  MAIN_REPS.forEach(rep=>{
+    const orders=CPO_ORDERS[rep]||[];
+    const customer=orders.filter(o=>o.is_cpo).length;
+    const rp=orders.length-customer;
+    cpo[rep]={total:orders.length,customer,rep:rp,pct:orders.length?Math.round(customer/orders.length*1000)/10:0};
+  });
+  D.cpo=cpo;
+  // Build D.spark from CPO_ORDERS (order counts per date)
+  const spark={};
+  MAIN_REPS.forEach(rep=>{
+    const orders=CPO_ORDERS[rep]||[];
+    spark[rep]=DATES.map(d=>orders.filter(o=>o.date===d).length);
+  });
+  D.spark=spark;
+  D.dates=DATES;
+}
+function updateAll(){computeD();renderKPIs();renderDashboard();renderLeaderboard();renderRepCards();renderReportCard();renderAccounts();renderTargets();updateBadge();}
 function onPeriodChange(){updateAll();if(scriptUrl)loadTargetsFromSheets();}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function toast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+(type||'ok');setTimeout(()=>t.classList.remove('show'),2600);}
