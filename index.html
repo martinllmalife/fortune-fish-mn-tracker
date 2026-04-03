@@ -1012,6 +1012,7 @@ async function switchDP(id){
   activeDPId = id;
   localStorage.setItem('cd_active_dp_id', id);
   await loadUploadHistory();
+  renderUploadHistory();
   updateAll();
   renderDPChip();
   renderDPDropdownList();
