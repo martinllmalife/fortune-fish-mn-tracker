@@ -145,8 +145,8 @@ select.top-sel{background:var(--bg);border:1px solid var(--border);color:var(--t
 
 /* ── LEADERBOARD ── */
 .leaderboard{display:flex;flex-direction:column;gap:0;background:var(--white);border-radius:12px;box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden;margin-bottom:24px;}
-.lb-hdr-row{display:grid;grid-template-columns:36px 1fr 220px 100px 80px 120px;gap:16px;padding:12px 20px;background:var(--gray-light);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);}
-.lb-row{display:grid;grid-template-columns:36px 1fr 220px 100px 80px 120px;gap:16px;padding:16px 20px;border-bottom:1px solid var(--border);align-items:center;cursor:pointer;transition:background .1s;}
+.lb-hdr-row{display:grid;grid-template-columns:36px 1fr 220px 100px 80px 120px 36px;gap:16px;padding:12px 20px;background:var(--gray-light);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);}
+.lb-row{display:grid;grid-template-columns:36px 1fr 220px 100px 80px 120px 36px;gap:16px;padding:16px 20px;border-bottom:1px solid var(--border);align-items:center;cursor:pointer;transition:background .1s;}
 .lb-row:last-child{border-bottom:none;}
 .lb-row:hover{background:var(--gray-light);}
 .lb-row.top{background:rgba(0,168,118,.04);}
@@ -656,7 +656,7 @@ select.f-sel{background:var(--white);border:1px solid var(--border2);color:var(-
       <!-- LEADERBOARD -->
       <div id="view-leaderboard" class="view">
         <div class="leaderboard">
-          <div class="lb-hdr-row"><div>#</div><div>Rep</div><div>Adoption funnel</div><div>Ordering %</div><div>CPO%</div><div style="text-align:right">Book size</div></div>
+          <div class="lb-hdr-row"><div>#</div><div>Rep</div><div>Adoption funnel</div><div>Ordering %</div><div>CPO%</div><div style="text-align:right">Book size</div><div></div></div>
           <div id="lbBody"></div>
         </div>
       </div>
@@ -1698,6 +1698,7 @@ function renderLeaderboard(){
       <div class="lb-pct" style="color:var(--green-dark)">${s.ordering_pct}%</div>
       <div class="lb-cpo" onclick="event.stopPropagation();openCPOModal('${rep}')" style="font-size:15px;font-weight:700;color:var(--blue)">${cpo.pct!=null&&cpo.pct!==undefined?cpo.pct+'%':'—'}</div>
       <div class="lb-meta">${tot} accounts</div>
+      <div onclick="event.stopPropagation();toggleHideRep('${rep}')" title="Hide rep" style="cursor:pointer;opacity:.35;font-size:13px;text-align:center;user-select:none" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.35">✕</div>
     </div>`;
   }).join('');
 }
