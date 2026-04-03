@@ -1115,7 +1115,7 @@ let targets={}, donutChart=null, baseChart_=null, cpoChart=null;
 let scriptUrl=localStorage.getItem('cd_script_url')||'';
 const STATUSES=['Not Invited','Invited','Signed Up','Ordering'];
 const COLORS={'Not Invited':'#D1D5DB','Invited':'#F59E0B','Signed Up':'#7C3AED','Ordering':'#00A876'};
-let MAIN_REPS=['Aaron Witchger','Charlie Butwinick','Jeff Pierce','Jonathan Padelford','Josh Carroll','Robert Ramirez','August Vanmeter']; // rebuilt from data in computeD()
+let MAIN_REPS=[]; // always rebuilt from uploaded data in computeD()
 let HIDDEN_REPS=new Set(); // reps hidden from leaderboard + rep cards; persisted in dp_settings
 const DATES=["2026-03-16","2026-03-17","2026-03-18","2026-03-19","2026-03-20","2026-03-21","2026-03-22"];
 
@@ -1525,7 +1525,7 @@ function rebuildRepSelect(){const s=document.getElementById('repSelect');s.inner
 function computeD(){
   // Rebuild MAIN_REPS from actual uploaded data — makes tool work for any DP
   const repsFromData = [...new Set(D.accounts.filter(a=>a.eligible==='Yes').map(a=>a.rep).filter(Boolean))].sort();
-  if(repsFromData.length > 0) MAIN_REPS = repsFromData;
+  MAIN_REPS = repsFromData; // always overwrite — even empty, so old DP reps don't bleed through
   // Build D.rep_summary from D.accounts
   const rs={};
   MAIN_REPS.forEach(rep=>{
