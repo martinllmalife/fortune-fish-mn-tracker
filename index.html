@@ -174,6 +174,13 @@ select.top-sel{background:var(--bg);border:1px solid var(--border);color:var(--t
 .rc-metric-num{font-size:26px;font-weight:700;line-height:1;text-align:right;}
 .rc-metric-lbl{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);text-align:right;margin-top:2px;}
 .rc-metric-divider{width:1px;background:var(--border);align-self:stretch;margin:2px 0;}
+/* ── TOOLTIP ── */
+.info-tip{position:relative;display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;background:var(--border);color:var(--text3);font-size:9px;font-weight:700;cursor:default;margin-left:3px;vertical-align:middle;flex-shrink:0;}
+.info-tip::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);right:0;width:220px;background:#1f2937;color:#f9fafb;font-size:11px;font-weight:400;line-height:1.5;padding:8px 10px;border-radius:8px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:999;text-align:left;letter-spacing:0;text-transform:none;white-space:normal;}
+.info-tip:hover::after{opacity:1;}
+/* caret */
+.info-tip::before{content:'';position:absolute;bottom:calc(100% + 2px);right:5px;border:4px solid transparent;border-top-color:#1f2937;pointer-events:none;opacity:0;transition:opacity .15s;z-index:999;}
+.info-tip:hover::before{opacity:1;}
 .rep-card-body{padding:14px 18px;}
 .rc-status-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
 .rc-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
@@ -889,6 +896,9 @@ select.f-sel{background:var(--white);border:1px solid var(--border2);color:var(-
         <span class="cpo-lbl-cs">CS facilitated</span>
       </div>
       <div class="cpo-split-bar"><div class="cpo-split-cust" id="cpoSplitCust" style="width:0%"></div><div class="cpo-split-cs" id="cpoSplitCS" style="width:0%"></div></div>
+      <div style="font-size:11px;color:var(--text3);background:var(--gray-light);border-radius:8px;padding:8px 12px;margin-top:10px;line-height:1.6">
+        <strong style="color:var(--text2)">* Estimate</strong> — CPO% is calculated from the uploaded Customer Orders Report using name matching on the <em>Order Placed By</em> field. An order is rep-placed if that field exactly matches a rep's first or full name on the account. CS-facilitated orders are those where an internal Customer Service team appears in the rep list. Name inconsistencies and ERP-synced reference numbers may affect accuracy.
+      </div>
       <div class="chart-mini"><canvas id="cpoChart"></canvas></div>
       <div class="tbl-wrap" style="max-height:260px;box-shadow:none">
         <table class="order-tbl">
@@ -1630,7 +1640,7 @@ function renderRepCards(){
         <div class="rc-metrics">
           <div class="rc-metric"><div class="rc-metric-num" style="color:var(--green-dark)">${s.ordering_pct}%</div><div class="rc-metric-lbl">Ordering</div></div>
           <div class="rc-metric-divider"></div>
-          <div class="rc-metric" style="cursor:pointer" onclick="openCPOModal('${rep}')"><div class="rc-metric-num" style="color:var(--blue)">${cpo.pct!=null?cpo.pct+'%':'—'}</div><div class="rc-metric-lbl">CPO%${cpo.cs_facilitated>0?` <span style="font-size:9px;background:#ede9fe;color:#6d28d9;border-radius:8px;padding:1px 5px;text-transform:none;letter-spacing:0">${cpo.cs_facilitated} CS</span>`:''}</div></div>
+          <div class="rc-metric" style="cursor:pointer" onclick="openCPOModal('${rep}')"><div class="rc-metric-num" style="color:var(--blue)">${cpo.pct!=null?cpo.pct+'%':'—'}</div><div class="rc-metric-lbl" style="display:flex;align-items:center;justify-content:flex-end;gap:2px">CPO%*${cpo.cs_facilitated>0?` <span style="font-size:9px;background:#ede9fe;color:#6d28d9;border-radius:8px;padding:1px 5px;text-transform:none;letter-spacing:0">${cpo.cs_facilitated} CS</span>`:''}<span class="info-tip" onclick="event.stopPropagation()" data-tip="Estimate only. CPO% = orders where 'Order Placed By' does not match a rep name on the account ÷ total C+D orders. Rep detection uses first-name / full-name matching and may miss edge cases. CS-facilitated = orders on accounts where a Customer Service team is listed as rep. Source: uploaded Customer Orders Report.">?</span></div></div>
         </div>
       </div>
       <div class="rep-card-body">${rows}</div>
