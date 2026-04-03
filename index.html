@@ -1528,10 +1528,10 @@ function showTabById(id){
 // ── SHEETS ──
 // (google sheets removed)
 // (google sheets removed)
-async function loadTargetsFromSheets(){return;// sheets removed - setSyncState('syncing','loading…');try{const p=encodeURIComponent(document.getElementById('periodSelect').value);const res=await fetch(`${scriptUrl}?action=getTargets&period=${p}`);const j=await res.json();if(j.ok){targets={};(j.targets||[]).forEach(t=>{targets[t.id]={period:t.period,at:t.at};});setSyncState('ok','synced');updateAll();}else setSyncState('err','error');}catch(e){setSyncState('err','unreachable');}}
-async function saveTargetToSheets(id,active,name,rep){return;// sheets removed - setSyncState('syncing','saving…');const a=D.accounts.find(x=>x.id===id)||{};try{const body={action:active?'addTarget':'removeTarget',id,customer:name||a.name,rep:rep||a.rep,location:a.city,status:a.status,period:document.getElementById('periodSelect').value,at:Date.now()};await fetch(scriptUrl,{method:'POST',body:JSON.stringify(body),headers:{'Content-Type':'text/plain'}});setSyncState('ok','saved');}catch(e){setSyncState('err','save failed');}}
-async function connectSheets(){return;// sheets removed - const url=document.getElementById('scriptUrl').value.trim();if(!url){toast('Paste your URL first','err');return;}const st=document.getElementById('connStatus');st.style.display='block';st.className='conn-status';st.textContent='Testing…';try{const res=await fetch(`${url}?action=ping`);const j=await res.json();if(j.ok){scriptUrl=url;localStorage.setItem('cd_script_url',url);st.className='conn-status ok';st.textContent='Connected!';document.getElementById('scriptUrl').classList.add('saved');setSyncState('ok','connected');updateConnSummary();document.getElementById('btnDisconnect').style.display='block';toast('Sheets connected');if(D.accounts.length)loadTargetsFromSheets();}else throw new Error();}catch(e){st.className='conn-status err';st.textContent='Could not connect. Make sure access is set to "Anyone".';}}
-function disconnectSheets(){return;// sheets removed - if(!confirm('Disconnect?'))return;scriptUrl='';localStorage.removeItem('cd_script_url');setSyncState('','not connected');updateConnSummary();document.getElementById('btnDisconnect').style.display='none';}
+async function loadTargetsFromSheets(){}
+async function saveTargetToSheets(){}
+async function connectSheets(){}
+function disconnectSheets(){}
 // (google sheets removed)
 
 
