@@ -185,7 +185,7 @@ select.top-sel{background:var(--bg);border:1px solid var(--border);color:var(--t
 .rc-status-row{display:flex;align-items:center;gap:10px;margin-bottom:7px;}
 .rc-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 .rc-s-lbl{font-size:12px;color:var(--text2);width:90px;flex-shrink:0;}
-.rc-bar-outer{flex:1;height:11px;background:#2d3142;border-radius:3px;overflow:hidden;}
+.rc-bar-outer{flex:1;height:11px;background:#4a4e5a;border-radius:3px;overflow:hidden;}
 .rc-bar-inner{height:100%;border-radius:3px;transition:width .5s ease;}
 .rc-cnt{font-size:12px;font-weight:600;color:var(--text);width:30px;text-align:right;flex-shrink:0;}
 .rc-pct2{font-size:11px;color:var(--text3);width:34px;text-align:right;flex-shrink:0;}
@@ -1707,7 +1707,9 @@ function drillRep(rep){document.getElementById('repSelect').value=rep;showTabByI
 // ── REP CARDS ──
 function renderRepCards(){
   const repSel=document.getElementById('repSelect').value;
-  const reps=(repSel==='All'?MAIN_REPS:MAIN_REPS.filter(r=>r===repSel)).filter(r=>!HIDDEN_REPS.has(r));
+  const reps=(repSel==='All'?MAIN_REPS:MAIN_REPS.filter(r=>r===repSel))
+    .filter(r=>!HIDDEN_REPS.has(r))
+    .sort((a,b)=>(D.rep_summary[b]?.ordering_pct||0)-(D.rep_summary[a]?.ordering_pct||0));
   document.getElementById('repCards').innerHTML=reps.map(rep=>{
     const s=D.rep_summary[rep];if(!s)return'';
     const cpo=D.cpo[rep]||{};
