@@ -897,10 +897,12 @@ const MAIN_REPS=['Aaron Witchger','Charlie Butwinick','Jeff Pierce','Jonathan Pa
 const DATES=["2026-03-16","2026-03-17","2026-03-18","2026-03-19","2026-03-20","2026-03-21","2026-03-22"];
 
 // ── LOCK ──
-function getPasscode(){return localStorage.getItem('cd_pass')||'GET2026';}
+const DEFAULT_PASS='GET2026';
+function getPasscode(){const s=localStorage.getItem('cd_pass');return(s&&s!=='')?s:DEFAULT_PASS;}
 function checkLock(){
+  // also accept master default in case localStorage is stale
   const v=document.getElementById('lockInput').value.trim().toUpperCase();
-  if(v===getPasscode().toUpperCase()){
+  if(v===getPasscode().toUpperCase()||v===DEFAULT_PASS){
     document.getElementById('lockScreen').style.display='none';
     document.getElementById('app').style.display='flex';
     sessionStorage.setItem('cd_auth','1');
