@@ -1177,12 +1177,8 @@ async function loadUploadHistory(){
       uploadHistory = data2 || [];
     }
   }
-  // ── Fallback to SEED_DATA if still empty ──────────────────────────────
-  if(uploadHistory.length > 0){
-    D.accounts = uploadHistory[uploadHistory.length-1].accounts;
-  } else {
-    D.accounts = SEED_DATA.accounts;
-  }
+  // Set accounts from latest snapshot — empty array if no uploads yet for this DP
+  D.accounts = uploadHistory.length > 0 ? uploadHistory[uploadHistory.length-1].accounts : [];
 }
 
 async function migrateLocalStorageToSupabase(){
@@ -1559,7 +1555,7 @@ function renderHiddenRepsList(){
       <button onclick="toggleHideRep('${rep}')" class="btn-connect" style="height:26px;padding:0 12px;font-size:11px">Restore</button>
     </div>`).join('');
 }
-function updateAll(){computeD();renderKPIs();renderDashboard();renderLeaderboard();renderRepCards();renderReportCard();renderAccounts();renderTargets();updateBadge();renderHiddenRepsList();}
+function updateAll(){computeD();rebuildRepSelect();renderKPIs();renderDashboard();renderLeaderboard();renderRepCards();renderReportCard();renderAccounts();renderTargets();updateBadge();renderHiddenRepsList();}
 function onPeriodChange(){updateAll();if(scriptUrl)loadTargetsFromSheets();}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function toast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+(type||'ok');setTimeout(()=>t.classList.remove('show'),2600);}
