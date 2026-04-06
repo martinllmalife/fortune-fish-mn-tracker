@@ -1557,7 +1557,22 @@ async function initApp(){
   } catch(e){ console.warn('initApp error:',e); }
 }
 function getFA(){const r=document.getElementById('repSelect').value;return r==='All'?D.accounts:D.accounts.filter(a=>a.rep===r);}
-function rebuildRepSelect(){const s=document.getElementById('repSelect');s.innerHTML=['All',...MAIN_REPS].map(r=>`<option value="${r}">${r==='All'?'All Reps':r}</option>`).join('');}
+let activeTab = 'dashboard';
+function rebuildRepSelect(){
+  const s=document.getElementById('repSelect');
+  if(activeTab === 'dsm'){
+    const h = loadHierarchy();
+    const opts = hierLevel==='territory' ? getTerritories(h) : getDSMNames(h);
+    const cur = document.getElementById('dsmSelector')?.value || opts[0] || '';
+    s.innerHTML = opts.length
+      ? opts.map(n=>`<option value="${n}"${n===cur?' selected':''}>${n}</option>`).join('')
+      : '<option value="">— No hierarchy —</option>';
+    s.onchange = () => { const ds=document.getElementById('dsmSelector'); if(ds){ds.value=s.value;} renderDSMDash(); };
+  } else {
+    s.innerHTML=['All',...MAIN_REPS].map(r=>`<option value="${r}">${r==='All'?'All Reps':r}</option>`).join('');
+    s.onchange = () => updateAll();
+  }
+}
 function computeD(){
   // Rebuild MAIN_REPS from actual uploaded data — makes tool work for any DP
   const repsFromData = [...new Set(D.accounts.filter(a=>a.eligible==='Yes').map(a=>a.rep).filter(Boolean))].sort();
@@ -2113,9 +2128,10 @@ function showTabById(id){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+id).classList.add('active');
   document.getElementById('breadcrumb').textContent=BREADCRUMBS[id]||id;
-  // Update sidebar active state (trends=1, leaderboard=2, etc - shifted by 1 for trends)
   const idx={'dashboard':0,'trends':1,'leaderboard':2,'reps':3,'reportcard':4,'accounts':5,'targets':6,'dsm':7,'setup':8};
   document.querySelectorAll('.sb-item').forEach((s,i)=>s.classList.toggle('active',i===idx[id]));
+  activeTab = id;
+  rebuildRepSelect();
   if(id==='trends') setTimeout(renderTrends, 50);
 }
 
@@ -2183,6 +2199,7 @@ function setHierLevel(level){
   document.getElementById('btnTerr').classList.toggle('active', level==='territory');
   document.getElementById('btnDSM').classList.toggle('active', level==='dsm');
   rebuildDSMSelector();
+  rebuildRepSelect();
   renderDSMDash();
 }
 
