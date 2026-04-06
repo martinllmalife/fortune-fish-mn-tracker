@@ -1147,8 +1147,8 @@ function checkLock(){
     const inp=document.getElementById('lockInput');
     inp.classList.add('err'); inp.value='';
     const errEl=document.getElementById('lockErr');
-    errEl.textContent = lockFailCount>=2
-      ? 'Incorrect — master code is GET2026'
+    errEl.textContent = lockFailCount>=3
+      ? 'Contact your GET rep for access'
       : 'Incorrect passcode';
     setTimeout(()=>{inp.classList.remove('err');},1000);
     inp.focus();
