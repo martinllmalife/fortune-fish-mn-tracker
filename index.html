@@ -3050,8 +3050,6 @@ function exportPDF(){
   const period  = document.getElementById('periodSelect').value;
   const dateStr = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
   const goalPct = getGoalPct();
-
-  // ── DATA ────────────────────────────────────────────────────────────────
   const fa      = getFA();
   const tot     = fa.length;
   const ordering= fa.filter(a=>a.status==='Ordering').length;
@@ -3061,248 +3059,185 @@ function exportPDF(){
   const eligNI  = fa.filter(a=>a.status==='Not Invited'&&a.eligible==='Yes').length;
   const ordPct  = tot ? Math.round(ordering/tot*100) : 0;
   const targetDate = (document.getElementById('targetDateInput')?.value||'').trim();
+  const SC = {'Not Invited':'#D1D5DB','Invited':'#8B5CF6','Signed Up':'#3B82F6','Ordering':'#10B981'};
 
-  const STATUS_COLORS = {'Not Invited':'#E5E7EB','Invited':'#A78BFA','Signed Up':'#60A5FA','Ordering':'#10B981'};
-  const STATUS_TEXT   = {'Not Invited':'#374151','Invited':'#5B21B6','Signed Up':'#1D4ED8','Ordering':'#065F46'};
-
-  // ── GOAL BLOCK ──────────────────────────────────────────────────────────
-  let goalHTML = '';
-  if(targetDate){
-    const target = new Date(targetDate);
-    const now = new Date();
-    const daysLeft = Math.max(0,Math.round((target-now)/86400000));
-    const barPct   = Math.min(100,Math.round(ordPct/goalPct*100));
-    const onTrack  = ordPct >= goalPct;
-    goalHTML = `
-    <div class="goal-block">
-      <div class="goal-label">${goalPct}% Adoption Goal</div>
-      <div class="goal-track"><div class="goal-fill" style="width:${barPct}%"></div></div>
-      <div class="goal-meta">${ordPct}% now · ${daysLeft} days to ${target.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})} · <strong style="color:${onTrack?'#065F46':'#DC2626'}">${onTrack?'On Track':'Behind'}</strong></div>
-    </div>`;
-  }
-
-  // ── FUNNEL BAR (SVG) ─────────────────────────────────────────────────────
-  const funnelItems = [
-    {label:'Ordering', count:ordering, color:'#10B981'},
-    {label:'Signed Up', count:su,      color:'#60A5FA'},
-    {label:'Invited',   count:invited, color:'#A78BFA'},
-    {label:'Not Invited',count:notInv, color:'#E5E7EB'},
-  ];
-  const funnelBars = funnelItems.map(f=>{
-    const pct = tot ? Math.round(f.count/tot*100) : 0;
-    return `<div class="funnel-row">
-      <div class="funnel-lbl">${f.label}</div>
-      <div class="funnel-bar-wrap">
-        <div class="funnel-bar" style="width:${Math.max(pct,1)}%;background:${f.color}"></div>
-      </div>
-      <div class="funnel-cnt">${f.count.toLocaleString()}</div>
-      <div class="funnel-pct">${pct}%</div>
-    </div>`;
-  }).join('');
-
-  // ── REP TABLE ────────────────────────────────────────────────────────────
-  const repsSorted = [...MAIN_REPS]
-    .filter(r=>!HIDDEN_REPS.has(r))
-    .sort((a,b)=>(D.rep_summary[b]?.ordering_pct||0)-(D.rep_summary[a]?.ordering_pct||0));
-
-  const repRows = repsSorted.map((rep,i)=>{
-    const s   = D.rep_summary[rep]; if(!s) return '';
-    const cpo = D.cpo[rep]||{};
-    const funnelSegs = ['Ordering','Signed Up','Invited','Not Invited'].map(st=>{
-      const cnt = s.counts[st]||0;
-      const w   = s.total ? Math.round(cnt/s.total*100) : 0;
-      return `<div style="height:8px;width:${Math.max(w,1)}%;background:${STATUS_COLORS[st]};display:inline-block"></div>`;
-    }).join('');
-    const statusDots = ['Not Invited','Invited','Signed Up','Ordering'].map(st=>{
-      const cnt = s.counts[st]||0;
-      return `<span style="color:${STATUS_TEXT[st]};font-size:11px;margin-right:10px"><span style="font-weight:600">${cnt}</span> ${st}</span>`;
-    }).join('');
-    const badge = s.ordering_pct>=60?'On Track':s.ordering_pct>=30?'Progressing':s.ordering_pct>=15?'Needs Attn':'Priority';
-    const badgeColor = s.ordering_pct>=60?'#D1FAE5:#065F46':s.ordering_pct>=30?'#DBEAFE:#1E40AF':s.ordering_pct>=15?'#FEF3C7:#92400E':'#FEE2E2:#991B1B';
-    const [bg,fg] = badgeColor.split(':');
-    return `<tr class="${i%2===0?'even':'odd'}">
-      <td class="rep-name">${rep}</td>
-      <td class="num">${s.total}</td>
-      <td>
-        <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;min-width:80px">${funnelSegs}</div>
-      </td>
-      <td class="num strong green">${s.ordering_pct}%</td>
-      <td class="num">${cpo.pct!=null&&cpo.pct!==undefined?cpo.pct+'%':'—'}</td>
-      <td class="num">${s.counts['Not Invited']||0}</td>
-      <td class="num">${s.eligible_ni}</td>
-      <td><span style="background:${bg};color:${fg};padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600;white-space:nowrap">${badge}</span></td>
-    </tr>`;
-  }).join('');
-
-  // ── CPO SUMMARY ──────────────────────────────────────────────────────────
+  // CPO rollup
   let cpoTot=0,cpoCust=0;
   MAIN_REPS.forEach(r=>{const c=D.cpo[r]||{};cpoTot+=c.total||0;cpoCust+=c.customer||0;});
   const cpoPctAll = cpoTot ? Math.round(cpoCust/cpoTot*100) : null;
-  const cpoLine   = cpoPctAll!=null
-    ? `<div class="kpi-item"><div class="kpi-val" style="color:#3B82F6">${cpoPctAll}%</div><div class="kpi-lbl">Customer Placed Orders</div></div>`
-    : '';
 
-  // ── FULL HTML ────────────────────────────────────────────────────────────
-  const html = `<!DOCTYPE html>
+  // Goal block
+  let goalHTML = '';
+  if(targetDate){
+    const target = new Date(targetDate); const now = new Date();
+    const daysLeft = Math.max(0,Math.round((target-now)/86400000));
+    const barW = Math.min(100,Math.round(ordPct/goalPct*100));
+    const ok = ordPct>=goalPct;
+    const tFmt = target.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    goalHTML=`<div style="background:#F0FDF4;border:1px solid #A7F3D0;border-radius:6px;padding:7px 12px;margin-bottom:12px;display:flex;align-items:center;gap:16px">
+      <div style="flex:1">
+        <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#065F46;margin-bottom:4px">${goalPct}% Adoption Goal · ${tFmt} · ${daysLeft}d left</div>
+        <div style="height:7px;background:#D1FAE5;border-radius:4px;overflow:hidden">
+          <div style="width:${barW}%;height:100%;background:#10B981;border-radius:4px"></div>
+        </div>
+      </div>
+      <div style="font-size:13px;font-weight:800;color:${ok?'#065F46':'#DC2626'}">${ok?'✓ On Track':'Behind'}</div>
+    </div>`;
+  }
+
+  // Funnel rows
+  const funnelItems=[{l:'Ordering',c:ordering,col:'#10B981'},{l:'Signed Up',c:su,col:'#3B82F6'},{l:'Invited',c:invited,col:'#8B5CF6'},{l:'Not Invited',c:notInv,col:'#D1D5DB'}];
+  const funnelHTML = funnelItems.map(f=>{
+    const p=tot?Math.round(f.c/tot*100):0;
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+      <div style="width:72px;font-size:9.5px;font-weight:500;color:#374151;flex-shrink:0">${f.l}</div>
+      <div style="flex:1;height:12px;background:#F3F4F6;border-radius:3px;overflow:hidden">
+        <div style="width:${Math.max(p,0.5)}%;height:100%;background:${f.col};border-radius:3px"></div>
+      </div>
+      <div style="width:38px;text-align:right;font-size:9.5px;font-weight:700;color:#111">${f.c.toLocaleString()}</div>
+      <div style="width:28px;text-align:right;font-size:9px;color:#6B7280">${p}%</div>
+    </div>`;
+  }).join('');
+
+  // Rep table rows — ultra-compact
+  const repsSorted = [...MAIN_REPS].filter(r=>!HIDDEN_REPS.has(r))
+    .sort((a,b)=>(D.rep_summary[b]?.ordering_pct||0)-(D.rep_summary[a]?.ordering_pct||0));
+
+  const repRows = repsSorted.map((rep,i)=>{
+    const s=D.rep_summary[rep]; if(!s) return '';
+    const cpo=D.cpo[rep]||{};
+    const segs=['Ordering','Signed Up','Invited','Not Invited'].map(st=>{
+      const w=s.total?Math.max(Math.round(s.counts[st]/s.total*100),0):0;
+      return `<div style="height:100%;width:${w}%;background:${SC[st]};display:inline-block;vertical-align:top"></div>`;
+    }).join('');
+    const badge=s.ordering_pct>=60?['#D1FAE5','#065F46','On Track']:s.ordering_pct>=30?['#DBEAFE','#1E40AF','Progressing']:s.ordering_pct>=15?['#FEF3C7','#92400E','Needs Attn']:['#FEE2E2','#991B1B','Priority'];
+    const bg=i%2===0?'#fff':'#F9FAFB';
+    return `<tr style="background:${bg};border-bottom:1px solid #F3F4F6">
+      <td style="padding:4px 6px;font-weight:600;font-size:9.5px;color:#111;white-space:nowrap">${esc(rep)}</td>
+      <td style="padding:4px 6px;text-align:right;font-size:9px;color:#374151">${s.total}</td>
+      <td style="padding:4px 6px">
+        <div style="height:8px;border-radius:3px;overflow:hidden;min-width:70px;display:flex">${segs}</div>
+      </td>
+      <td style="padding:4px 6px;text-align:right;font-weight:700;font-size:9.5px;color:#065F46">${s.ordering_pct}%</td>
+      <td style="padding:4px 6px;text-align:right;font-size:9px;color:#1D4ED8">${cpo.pct!=null&&cpo.pct!==undefined?cpo.pct+'%':'—'}</td>
+      <td style="padding:4px 6px;text-align:right;font-size:9px;color:#374151">${s.counts['Not Invited']||0}</td>
+      <td style="padding:4px 6px;text-align:right;font-size:9px;color:#374151">${s.eligible_ni}</td>
+      <td style="padding:4px 6px"><span style="background:${badge[0]};color:${badge[1]};padding:2px 5px;border-radius:8px;font-size:8px;font-weight:700;white-space:nowrap">${badge[2]}</span></td>
+    </tr>`;
+  }).join('');
+
+  // Legend
+  const legendHTML = ['Ordering','Signed Up','Invited','Not Invited'].map(s=>`<span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;font-size:8.5px;color:#374151"><span style="width:10px;height:10px;border-radius:2px;background:${SC[s]};display:inline-block"></span>${s}</span>`).join('');
+
+  const html=`<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>${dpName} — Adoption Report — ${period}</title>
+<title>${esc(dpName)} — Adoption Report — ${esc(period)}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  @page{size:letter portrait;margin:0.55in 0.6in}
-  body{font-family:'Inter',system-ui,-apple-system,Arial,sans-serif;font-size:11px;color:#111827;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-
-  /* ── HEADER ── */
-  .hdr{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:2.5px solid #10B981;margin-bottom:18px}
-  .hdr-left{display:flex;align-items:center;gap:12px}
-  .logo-mark{width:36px;height:36px;background:#10B981;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-  .logo-mark svg{width:20px;height:20px}
-  .hdr-title{font-size:18px;font-weight:800;color:#111827;letter-spacing:-.02em}
-  .hdr-sub{font-size:11px;color:#6B7280;margin-top:1px}
-  .hdr-right{text-align:right}
-  .hdr-dp{font-size:14px;font-weight:700;color:#111827}
-  .hdr-meta{font-size:10px;color:#6B7280;margin-top:2px}
-
-  /* ── KPI ROW ── */
-  .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px}
-  .kpi-item{background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:10px 12px}
-  .kpi-val{font-size:22px;font-weight:800;line-height:1;margin-bottom:3px}
-  .kpi-lbl{font-size:9.5px;font-weight:500;color:#6B7280;text-transform:uppercase;letter-spacing:.05em}
-  .kpi-sub{font-size:9px;color:#9CA3AF;margin-top:2px}
-
-  /* ── SECTION ── */
-  .section{margin-bottom:20px}
-  .section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6B7280;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid #E5E7EB}
-
-  /* ── FUNNEL ── */
-  .funnel-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-  .funnel-lbl{width:80px;font-size:10px;font-weight:500;color:#374151;flex-shrink:0}
-  .funnel-bar-wrap{flex:1;height:14px;background:#F3F4F6;border-radius:4px;overflow:hidden}
-  .funnel-bar{height:100%;border-radius:4px;transition:width .3s}
-  .funnel-cnt{width:44px;text-align:right;font-size:10px;font-weight:700;color:#111827;flex-shrink:0}
-  .funnel-pct{width:32px;text-align:right;font-size:10px;color:#6B7280;flex-shrink:0}
-
-  /* ── GOAL ── */
-  .goal-block{background:#F0FDF4;border:1px solid #A7F3D0;border-radius:8px;padding:10px 14px;margin-bottom:18px}
-  .goal-label{font-size:10px;font-weight:700;color:#065F46;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
-  .goal-track{height:8px;background:#D1FAE5;border-radius:4px;overflow:hidden;margin-bottom:5px}
-  .goal-fill{height:100%;background:#10B981;border-radius:4px}
-  .goal-meta{font-size:10px;color:#065F46}
-
-  /* ── TABLE ── */
-  table{width:100%;border-collapse:collapse;font-size:10.5px}
-  thead tr{background:#111827}
-  thead th{color:#fff;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;padding:7px 8px;text-align:left}
-  thead th.num{text-align:right}
-  tbody tr.even{background:#F9FAFB}
-  tbody tr.odd{background:#fff}
-  tbody tr{border-bottom:1px solid #F3F4F6}
-  td{padding:6px 8px;vertical-align:middle}
-  td.num{text-align:right;color:#374151}
-  td.rep-name{font-weight:600;color:#111827}
-  td.strong{font-weight:700}
-  td.green{color:#065F46}
-
-  /* ── FOOTER ── */
-  .footer{position:fixed;bottom:0.3in;left:0.6in;right:0.6in;display:flex;justify-content:space-between;font-size:9px;color:#9CA3AF;border-top:1px solid #E5E7EB;padding-top:5px}
-
-  /* ── PAGE BREAK ── */
-  .page-break{page-break-before:always;padding-top:0}
+  @page{size:letter portrait;margin:0.45in 0.5in}
+  body{font-family:'Inter',system-ui,-apple-system,Arial,sans-serif;font-size:10px;color:#111827;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .page2{page-break-before:always}
+  table{width:100%;border-collapse:collapse}
+  thead th{background:#111827;color:#fff;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:5px 6px}
+  thead th.r{text-align:right}
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
-<div class="hdr">
-  <div class="hdr-left">
-    <div class="logo-mark">
-      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-      </svg>
+<!-- ═══ PAGE 1 : SUMMARY ═══ -->
+<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:2.5px solid #10B981;margin-bottom:14px">
+  <div style="display:flex;align-items:center;gap:10px">
+    <div style="width:32px;height:32px;background:#10B981;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
     </div>
     <div>
-      <div class="hdr-title">GET Cut+Dry</div>
-      <div class="hdr-sub">Growth Enablement Tool · Adoption Report</div>
+      <div style="font-size:16px;font-weight:800;color:#111;letter-spacing:-.02em">GET Cut+Dry</div>
+      <div style="font-size:9px;color:#6B7280;margin-top:1px">Growth Enablement Tool · Adoption Report</div>
     </div>
   </div>
-  <div class="hdr-right">
-    <div class="hdr-dp">${esc(dpName)}</div>
-    <div class="hdr-meta">${esc(period)} · Generated ${dateStr}</div>
+  <div style="text-align:right">
+    <div style="font-size:13px;font-weight:700;color:#111">${esc(dpName)}</div>
+    <div style="font-size:9px;color:#6B7280;margin-top:2px">${esc(period)} · ${dateStr}</div>
   </div>
 </div>
 
 <!-- KPIs -->
-<div class="kpi-row">
-  <div class="kpi-item">
-    <div class="kpi-val" style="color:#10B981">${ordPct}%</div>
-    <div class="kpi-lbl">Ordering Rate</div>
-    <div class="kpi-sub">${ordering.toLocaleString()} of ${tot.toLocaleString()} accounts</div>
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px">
+  <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:7px;padding:9px 11px">
+    <div style="font-size:20px;font-weight:800;color:#10B981;line-height:1">${ordPct}%</div>
+    <div style="font-size:8.5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#6B7280;margin-top:3px">Ordering Rate</div>
+    <div style="font-size:8px;color:#9CA3AF;margin-top:2px">${ordering.toLocaleString()} of ${tot.toLocaleString()}</div>
   </div>
-  <div class="kpi-item">
-    <div class="kpi-val" style="color:#F59E0B">${eligNI.toLocaleString()}</div>
-    <div class="kpi-lbl">Ready to Invite</div>
-    <div class="kpi-sub">Eligible · never contacted</div>
+  <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:7px;padding:9px 11px">
+    <div style="font-size:20px;font-weight:800;color:#F59E0B;line-height:1">${eligNI.toLocaleString()}</div>
+    <div style="font-size:8.5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#6B7280;margin-top:3px">Ready to Invite</div>
+    <div style="font-size:8px;color:#9CA3AF;margin-top:2px">Eligible · not contacted</div>
   </div>
-  <div class="kpi-item">
-    <div class="kpi-val" style="color:#8B5CF6">${invited.toLocaleString()}</div>
-    <div class="kpi-lbl">Invited</div>
-    <div class="kpi-sub">Awaiting sign-up</div>
+  <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:7px;padding:9px 11px">
+    <div style="font-size:20px;font-weight:800;color:#8B5CF6;line-height:1">${invited.toLocaleString()}</div>
+    <div style="font-size:8.5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#6B7280;margin-top:3px">Invited</div>
+    <div style="font-size:8px;color:#9CA3AF;margin-top:2px">Awaiting sign-up</div>
   </div>
-  <div class="kpi-item">
-    <div class="kpi-val" style="color:#3B82F6">${su.toLocaleString()}</div>
-    <div class="kpi-lbl">Signed Up</div>
-    <div class="kpi-sub">Not yet ordering</div>
+  <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:7px;padding:9px 11px">
+    <div style="font-size:20px;font-weight:800;color:#3B82F6;line-height:1">${su.toLocaleString()}</div>
+    <div style="font-size:8.5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#6B7280;margin-top:3px">Signed Up</div>
+    <div style="font-size:8px;color:#9CA3AF;margin-top:2px">Not yet ordering</div>
   </div>
-  ${cpoLine||`<div class="kpi-item"><div class="kpi-val" style="color:#6B7280;font-size:16px">—</div><div class="kpi-lbl">CPO%</div><div class="kpi-sub">No orders uploaded</div></div>`}
+  <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:7px;padding:9px 11px">
+    <div style="font-size:20px;font-weight:800;color:${cpoPctAll!=null?'#3B82F6':'#9CA3AF'};line-height:1">${cpoPctAll!=null?cpoPctAll+'%':'—'}</div>
+    <div style="font-size:8.5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#6B7280;margin-top:3px">CPO%</div>
+    <div style="font-size:8px;color:#9CA3AF;margin-top:2px">${cpoPctAll!=null?cpoCust.toLocaleString()+' customer-placed':'No orders uploaded'}</div>
+  </div>
 </div>
 
-<!-- GOAL -->
 ${goalHTML}
 
-<!-- FUNNEL -->
-<div class="section">
-  <div class="section-title">Adoption Funnel</div>
-  ${funnelBars}
+<!-- Funnel -->
+<div style="margin-bottom:14px">
+  <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6B7280;margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid #E5E7EB">Adoption Funnel</div>
+  ${funnelHTML}
 </div>
 
-<!-- REP TABLE -->
-<div class="section page-break">
-  <div class="hdr" style="margin-top:0">
-    <div class="hdr-left">
-      <div class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
-      <div><div class="hdr-title">GET Cut+Dry</div><div class="hdr-sub">Rep Performance · ${esc(dpName)} · ${esc(period)}</div></div>
-    </div>
-    <div class="hdr-right"><div class="hdr-dp">${repsSorted.length} Sales Reps</div><div class="hdr-meta">${dateStr}</div></div>
+<!-- Legend -->
+<div style="margin-top:8px;padding-top:8px;border-top:1px solid #E5E7EB">
+  ${legendHTML}
+  <span style="font-size:8px;color:#9CA3AF;float:right">${esc(dpName)} · ${esc(period)} · ${dateStr}</span>
+</div>
+
+<!-- ═══ PAGE 2 : REP TABLE ═══ -->
+<div class="page2">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;border-bottom:2px solid #10B981;margin-bottom:10px">
+    <div style="font-size:13px;font-weight:800;color:#111">Rep Performance · ${esc(dpName)}</div>
+    <div style="font-size:9px;color:#6B7280">${esc(period)} · ${dateStr} · ${repsSorted.length} reps</div>
   </div>
-  <div class="section-title">Rep-by-Rep Breakdown</div>
   <table>
     <thead>
       <tr>
-        <th>Rep</th>
-        <th class="num">Accts</th>
-        <th>Funnel</th>
-        <th class="num">Ordering %</th>
-        <th class="num">CPO%</th>
-        <th class="num">Not Invited</th>
-        <th class="num">Eligible NI</th>
-        <th>Status</th>
+        <th style="text-align:left;width:22%">Rep</th>
+        <th class="r" style="width:5%">Accts</th>
+        <th style="width:20%">Funnel</th>
+        <th class="r" style="width:9%">Ordering</th>
+        <th class="r" style="width:7%">CPO%</th>
+        <th class="r" style="width:8%">Not Inv.</th>
+        <th class="r" style="width:8%">Elig. NI</th>
+        <th style="width:11%">Status</th>
       </tr>
     </thead>
     <tbody>${repRows}</tbody>
   </table>
+  <div style="margin-top:10px;padding-top:6px;border-top:1px solid #E5E7EB;display:flex;align-items:center;justify-content:space-between">
+    <div>${legendHTML}</div>
+    <div style="font-size:8px;color:#9CA3AF">GET Cut+Dry · ${esc(dpName)} · ${dateStr}</div>
+  </div>
 </div>
 
-<div class="footer">
-  <span>GET Cut+Dry · ${esc(dpName)} · ${esc(period)}</span>
-  <span>${dateStr}</span>
-</div>
-
-<script>window.onload=()=>{window.print();}<\/script>
+<script>window.onload=()=>{ setTimeout(()=>window.print(), 150); }<\/script>
 </body>
 </html>`;
 
-  const w = window.open('', '_blank');
+  const w = window.open('','_blank');
   w.document.write(html);
   w.document.close();
 }
