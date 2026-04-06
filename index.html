@@ -1020,6 +1020,8 @@ async function switchDP(id){
   renderDPChip();
   renderDPDropdownList();
   renderDPManageList();
+  // Load the new DP's hierarchy first so DSM view reflects the right DP
+  await loadHierarchyFromSupabase();
   await loadDPSettings();
   document.getElementById('dpDropdown').style.display='none';
 }
@@ -1059,11 +1061,12 @@ async function loadDPSettings(){
   if(tdi) tdi.value = data?.target_date || '';
   const gpi = document.getElementById('goalPctInput');
   if(gpi) gpi.value = data?.goal_pct ?? 80;
-  // Hydrate hierarchy cache from the row we already fetched
+  // Hydrate hierarchy cache from the row we already fetched.
+  // IMPORTANT: only SET if we have real data — never wipe existing hierarchy just because
+  // the current DP row has no hierarchy column (that would destroy Vitco hierarchy when
+  // switching to a different DP that hasn't had hierarchy configured yet).
   if(data?.hierarchy && Object.keys(data.hierarchy.dsms||{}).length > 0){
     localStorage.setItem('cd_hierarchy', JSON.stringify(data.hierarchy));
-  } else {
-    localStorage.removeItem('cd_hierarchy');
   }
   rebuildDSMSelector(); renderHierarchySetup(); renderDSMDash();
   // Load hidden reps
@@ -2117,6 +2120,7 @@ function showTabById(id){
   activeTab = id;
   rebuildRepSelect();
   if(id==='trends') setTimeout(renderTrends, 50);
+  if(id==='dsm') renderDSMDash();
 }
 
 // ── SHEETS ──
